@@ -1,5 +1,5 @@
 # Sử dụng một base image Python nhẹ
-FROM python:3.9-slim-buster
+FROM python:3.11-slim-bullseye
 
 # Cài đặt các công cụ mạng cần thiết mà container không có sẵn
 # network-manager cung cấp lệnh 'nmcli'
@@ -21,4 +21,5 @@ COPY . .
 
 # Chạy ứng dụng bằng gunicorn khi container khởi động
 CMD ["gunicorn", "--workers", "1", "--bind", "0.0.0.0:80", "app:app"]
+
 
