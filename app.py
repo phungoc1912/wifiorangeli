@@ -1,229 +1,158 @@
 import subprocess
-import time
-from flask import Flask, request, render_template_string, redirect, url_for
+import re
+from flask import Flask, render_template_string, request, redirect, jsonify
 
 app = Flask(__name__)
 
 # --- TEMPLATES HTML ---
-# Sử dụng template string để giữ mọi thứ trong một file.
-# CSS được nhúng trực tiếp để giao diện gọn gàng và tương thích với di động.
+# Mỗi template giờ là một file HTML hoàn chỉnh
 
-LAYOUT_TEMPLATE = """
+SETUP_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình quản lý WiFi - Orange Pi</title>
+    <title>Cài đặt WiFi - Orange Pi</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-               background-color: #f0f2f5; color: #333; margin: 0; padding: 20px;
-               display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background-color: #fff; padding: 30px; border-radius: 10px;
-                     box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
-        h1 { color: #ff6600; text-align: center; }
-        .status { background-color: #e7f3ff; border-left: 5px solid #007bff; padding: 15px;
-                  margin-bottom: 20px; border-radius: 5px; }
-        .status-error { background-color: #ffebee; border-left: 5px solid #f44336; }
-        label { font-weight: bold; margin-top: 15px; display: block; }
-        select, input[type="password"], input[type="submit"] {
-            width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc;
-            border-radius: 5px; box-sizing: border-box; font-size: 16px; }
-        input[type="submit"] { background-color: #ff6600; color: white; font-weight: bold;
-                               border: none; cursor: pointer; transition: background-color 0.3s; }
-        input[type="submit"]:hover { background-color: #e65c00; }
-        .wifi-list { list-style-type: none; padding: 0; }
-        .wifi-list li { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
-        .wifi-list li:hover { background-color: #f9f9f9; }
-        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #888; }
-        .loader { margin: 20px auto; border: 5px solid #f3f3f3; border-top: 5px solid #ff6600;
-                  border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; max-width: 400px; }
+        h1 { color: #4a4a4a; text-align: center; }
+        form div { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        select, input[type="password"], input[type="text"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .btn { display: block; width: 100%; padding: 1rem; border: none; border-radius: 4px; background-color: #5a67d8; color: white; font-size: 1rem; cursor: pointer; text-align: center; text-decoration: none; }
+        .btn:hover { background-color: #434190; }
+        .status { margin-top: 1rem; padding: 1rem; border-radius: 4px; text-align: center; }
+        .status.success { background-color: #e6fffa; border: 1px solid #38c172; color: #1f9d55; }
+        .status.error { background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Trình quản lý WiFi</h1>
-        {% block content %}{% endblock %}
-        <div class="footer">Orange Pi Control Panel</div>
+        <h1>📶 Cài đặt WiFi</h1>
+        <div class="status success">
+            <strong>Trạng thái:</strong> {{ current_ssid or 'Chưa kết nối' }}<br>
+            <strong>IP:</strong> {{ current_ip or 'N/A' }}
+        </div>
+        <hr style="margin: 1.5rem 0; border: 1px solid #eee;">
+        <form action="/connect" method="post">
+            <div>
+                <label for="ssid">Chọn mạng WiFi:</label>
+                <select id="ssid" name="ssid" required>
+                    <option value="">-- Đang quét... --</option>
+                    {% for network in networks %}
+                    <option value="{{ network }}">{{ network }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="password">Mật khẩu:</label>
+                <input type="password" id="password" name="password">
+            </div>
+            <button type="submit" class="btn">Kết nối</button>
+        </form>
     </div>
 </body>
 </html>
 """
 
-MAIN_PAGE_TEMPLATE = """
-{% extends "layout" %}
-{% block content %}
-    {% if status.ssid %}
-    <div class="status">
-        <p><strong>Trạng thái:</strong> Đã kết nối</p>
-        <p><strong>Mạng:</strong> {{ status.ssid }}</p>
-        <p><strong>Địa chỉ IP:</strong> {{ status.ip }}</p>
-        <p><small>Truy cập tại: <a href="http://orangepi.local">http://orangepi.local</a></small></p>
-    </div>
-    {% else %}
-    <div class="status status-error">
-        <p><strong>Trạng thái:</strong> Chưa kết nối. Vui lòng chọn một mạng để cấu hình.</p>
-    </div>
-    {% endif %}
-
-    <form action="/connect" method="post">
-        <label for="ssid">Chọn một mạng WiFi:</label>
-        <select id="ssid" name="ssid" required>
-            <option value="">-- Đang quét... --</option>
-            {% for network in networks %}
-            <option value="{{ network }}">{{ network }}</option>
-            {% endfor %}
-        </select>
-        <label for="password">Mật khẩu:</label>
-        <input type="password" id="password" name="password">
-        <br><br>
-        <input type="submit" value="Kết nối">
-    </form>
-{% endblock %}
-"""
-
 CONNECTING_TEMPLATE = """
-{% extends "layout" %}
-{% block content %}
-    <h2 style="text-align:center;">Đang kết nối tới mạng "{{ ssid }}"...</h2>
-    <p style="text-align:center;">Vui lòng đợi khoảng 15-20 giây. Trang sẽ tự động kiểm tra trạng thái.</p>
-    <div class="loader"></div>
-    <meta http-equiv="refresh" content="15;url=/status">
-{% endblock %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đang kết nối...</title>
+    <meta http-equiv="refresh" content="10;url=/">
+    <style>
+        body { font-family: sans-serif; background-color: #f4f4f9; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; text-align: center; }
+        .container { background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .loader { border: 8px solid #f3f3f3; border-radius: 50%; border-top: 8px solid #5a67d8; width: 60px; height: 60px; animation: spin 2s linear infinite; margin: 0 auto 1rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loader"></div>
+        <h1>Đang thử kết nối vào mạng "{{ ssid }}"...</h1>
+        <p>Vui lòng đợi trong giây lát. Trang sẽ tự động làm mới sau 10 giây.</p>
+        <p>Nếu kết nối thành công, bạn có thể cần kết nối lại vào mạng WiFi chính và truy cập Orange Pi bằng địa chỉ IP mới.</p>
+        <a href="/">Quay lại</a>
+    </div>
+</body>
+</html>
 """
 
-STATUS_TEMPLATE = """
-{% extends "layout" %}
-{% block content %}
-    {% if success %}
-    <div class="status">
-        <h2>✅ Kết nối thành công!</h2>
-        <p>Orange Pi của bạn đã được kết nối vào mạng <strong>{{ ssid }}</strong>.</p>
-        <p>Địa chỉ IP mới là: <strong>{{ ip }}</strong></p>
-        <p>Bạn có thể cần kết nối lại thiết bị của mình vào cùng mạng WiFi và truy cập vào địa chỉ IP mới hoặc <a href="http://orangepi.local">http://orangepi.local</a>.</p>
-    </div>
-    {% else %}
-    <div class="status status-error">
-        <h2>❌ Kết nối thất bại</h2>
-        <p>Không thể kết nối vào mạng <strong>{{ ssid }}</strong>. Vui lòng kiểm tra lại mật khẩu và thử lại.</p>
-        <a href="/">Quay lại trang chính</a>
-    </div>
-    {% endif %}
-{% endblock %}
-"""
+# --- LOGIC PYTHON ---
 
-# --- CÁC HÀM HỖ TRỢ ---
+def run_command(command):
+    """Hàm helper để chạy lệnh và trả về output."""
+    try:
+        result = subprocess.check_output(command, shell=True, text=True, stderr=subprocess.STDOUT)
+        return result.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Lỗi khi chạy lệnh '{command}': {e.output}")
+        return None
+
+def get_wifi_networks():
+    """Quét các mạng WiFi bằng nmcli."""
+    # nmcli có thể cần chạy lại vài lần để có kết quả
+    run_command("nmcli dev wifi rescan")
+    # Lấy các trường SSID, SIGNAL, SECURITY
+    output = run_command("nmcli --terse --fields SSID,SIGNAL,SECURITY dev wifi list")
+    if not output:
+        return []
+    
+    seen_ssids = set()
+    networks = []
+    for line in output.split('\n'):
+        parts = line.split(':')
+        if len(parts) >= 1 and parts[0]:
+            ssid = parts[0]
+            if ssid not in seen_ssids:
+                seen_ssids.add(ssid)
+                networks.append(ssid)
+    return sorted(list(networks))
 
 def get_current_connection():
-    """Lấy thông tin kết nối WiFi hiện tại (SSID và IP)."""
-    try:
-        ssid = subprocess.check_output(['iwgetid', '-r'], text=True).strip()
-        ip_raw = subprocess.check_output(['hostname', '-I'], text=True).strip()
-        ip = ip_raw.split()[0] # Lấy IP đầu tiên nếu có nhiều
-        return {"ssid": ssid, "ip": ip}
-    except subprocess.CalledProcessError:
-        return {"ssid": None, "ip": None}
-
-def scan_wifi_networks():
-    """Quét và trả về danh sách các SSID duy nhất."""
-    try:
-        # Yêu cầu nmcli quét lại
-        subprocess.run(['nmcli', 'dev', 'wifi', 'rescan'], timeout=10)
-        time.sleep(3) # Đợi một chút để quá trình quét hoàn tất
-        
-        # Lấy danh sách mạng
-        result = subprocess.check_output(['nmcli', '-f', 'SSID', 'dev', 'wifi', 'list', '--rescan', 'no'], text=True)
-        lines = result.strip().split('\n')[1:] # Bỏ dòng tiêu đề
-        ssids = {line.strip() for line in lines if line.strip() and line.strip() != '--'}
-        return sorted(list(ssids))
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-        return []
-
-# --- CÁC ROUTE CỦA FLASK ---
+    """Lấy SSID và địa chỉ IP hiện tại."""
+    ssid = run_command("iwgetid -r")
+    ip_address = run_command("hostname -I | awk '{print $1}'")
+    return ssid, ip_address
 
 @app.route("/")
 def index():
-    """Trang chính: Hiển thị trạng thái và danh sách WiFi."""
-    status = get_current_connection()
-    networks = scan_wifi_networks()
+    networks = get_wifi_networks()
+    current_ssid, current_ip = get_current_connection()
     return render_template_string(
-        MAIN_PAGE_TEMPLATE,
-        status=status,
+        SETUP_TEMPLATE,
         networks=networks,
-        layout=LAYOUT_TEMPLATE
+        current_ssid=current_ssid,
+        current_ip=current_ip
     )
 
 @app.route("/connect", methods=["POST"])
 def connect():
-    """Xử lý yêu cầu kết nối WiFi."""
     ssid = request.form.get("ssid")
-    password = request.form.get("password", "") # Mật khẩu có thể rỗng
+    password = request.form.get("password", "") # Mật khẩu có thể trống
 
     if not ssid:
-        return "Lỗi: Tên WiFi (SSID) không được cung cấp.", 400
+        return "Lỗi: Tên SSID không được cung cấp.", 400
 
-    # Lưu lại ssid để hiển thị trên trang trạng thái
-    global last_attempted_ssid
-    last_attempted_ssid = ssid
-
-    try:
-        # Sử dụng nmcli để kết nối. Lệnh này sẽ tự động tạo và quản lý connection profile.
-        command = ['nmcli', 'dev', 'wifi', 'connect', ssid]
-        if password:
-            command.extend(['password', password])
-        
-        # Chạy lệnh với timeout
-        subprocess.run(command, check=True, timeout=30)
-        
-        # Nếu lệnh chạy xong mà không có lỗi, nmcli thường đã kết nối thành công.
-        # Chuyển hướng ngay đến trang trạng thái để xác nhận.
-        return redirect(url_for('status'))
-
-    except subprocess.TimeoutExpired:
-        # Nếu timeout, rất có thể kết nối thất bại (sai pass, sóng yếu)
-        return redirect(url_for('status'))
-    except subprocess.CalledProcessError as e:
-        # Nếu nmcli trả về lỗi, cũng là thất bại
-        print(f"Lỗi khi kết nối nmcli: {e}")
-        return redirect(url_for('status'))
-
-@app.route("/status")
-def status():
-    """Trang kiểm tra trạng thái sau khi kết nối."""
-    global last_attempted_ssid
-    ssid_to_check = last_attempted_ssid
+    print(f"Thử kết nối vào SSID: {ssid}")
     
-    # Đợi một chút để network interface nhận IP mới
-    time.sleep(5)
-    
-    current = get_current_connection()
-    
-    if current["ssid"] == ssid_to_check:
-        return render_template_string(
-            STATUS_TEMPLATE,
-            success=True,
-            ssid=current["ssid"],
-            ip=current["ip"],
-            layout=LAYOUT_TEMPLATE
-        )
+    # Lệnh nmcli để kết nối. Nếu không có mật khẩu, bỏ qua phần password.
+    if password:
+        command = f"nmcli dev wifi connect '{ssid}' password '{password}'"
     else:
-        return render_template_string(
-            STATUS_TEMPLATE,
-            success=False,
-            ssid=ssid_to_check,
-            layout=LAYOUT_TEMPLATE
-        )
+        command = f"nmcli dev wifi connect '{ssid}'"
 
-# --- KHỞI CHẠY APP ---
-# Biến global để lưu lại ssid vừa thử kết nối
-last_attempted_ssid = ""
+    connection_result = run_command(command)
+    print(f"Kết quả kết nối: {connection_result}")
 
-# Gán template layout cho các template con
-@app.context_processor
-def inject_layout():
-    return dict(layout=LAYOUT_TEMPLATE)
+    return render_template_string(CONNECTING_TEMPLATE, ssid=ssid)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, debug=False)
-
+    app.run(host='0.0.0.0', port=8000)
