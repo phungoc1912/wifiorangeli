@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Chạy ứng dụng bằng gunicorn khi container khởi động
-CMD ["gunicorn", "--workers", "1", "--bind", "0.0.0.0:80", "app:app"]
+CMD ["gunicorn", "--workers", "1", "--bind", "0.0.0.0:8000", "app:app"]
+
 
 
