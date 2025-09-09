@@ -58,7 +58,7 @@ git clone $GIT_URL $INSTALL_DIR
 # 4. Build và khởi chạy container
 echo ">>> [4/5] Build image và khởi chạy container..."
 cd $INSTALL_DIR
-docker-compose up -d --build
+docker compose up -d --build
 
 # 5. Dọn dẹp (tùy chọn)
 echo ">>> [5/5] Dọn dẹp các image không cần thiết..."
@@ -70,5 +70,6 @@ echo "Ứng dụng Trình quản lý WiFi đã được triển khai bằng Dock
 echo "Bạn có thể truy cập qua địa chỉ IP của thiết bị hoặc qua http://$(hostname).local"
 echo "Để xem logs, dùng lệnh: cd $INSTALL_DIR && docker-compose logs -f"
 echo "Để dừng ứng dụng, dùng lệnh: cd $INSTALL_DIR && docker-compose down"
+
 
 
