@@ -51,7 +51,7 @@ GIT_REPO="YOUR_REPO"
 Bước 2: Chạy lệnh cài đặt
 Mở terminal trên Orange Pi của bạn và chạy lệnh duy nhất dưới đây. (Hãy chắc chắn bạn đã thay YOUR_USERNAME và YOUR_REPO trong lệnh này).
 
-curl -sL [https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh](https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh) | sudo bash
+curl -sL [https://raw.githubusercontent.com/phungoc1912/wifiorangeli/main/install.sh](https://raw.githubusercontent.com/phungoc1912/wifiorangeli/main/install.sh) | sudo bash
 
 Kịch bản sẽ tự động thực hiện các công việc sau:
 
@@ -92,4 +92,5 @@ Cập nhật phiên bản mới (sau khi bạn đã push code mới lên GitHub)
 git pull && docker-compose up -d --build
 
 📝 License
+
 Dự án này được cấp phép dưới giấy phép MIT. Xem file LICENSE để biết thêm chi tiết.
