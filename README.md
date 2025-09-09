@@ -8,6 +8,8 @@ Giao diện Web trực quan: Dễ dàng quét các mạng WiFi có sẵn và k�
 
 Trang Trạng thái: Hiển thị thông tin kết nối hiện tại, bao gồm Tên mạng (SSID) và địa chỉ IP.
 
+Truy cập tiện lợi qua tên miền .local: Kịch bản cài đặt tự động cấu hình dịch vụ Avahi, cho phép bạn truy cập thiết bị qua một địa chỉ dễ nhớ như http://orangepi.local.
+
 Triển khai bằng Docker: Đóng gói toàn bộ ứng dụng và môi trường, không làm ảnh hưởng đến hệ điều hành chính.
 
 Cài đặt bằng một dòng lệnh: Kịch bản cài đặt tự động hóa toàn bộ quá trình.
@@ -51,11 +53,11 @@ GIT_REPO="YOUR_REPO"
 Bước 2: Chạy lệnh cài đặt
 Mở terminal trên Orange Pi của bạn và chạy lệnh duy nhất dưới đây. (Hãy chắc chắn bạn đã thay YOUR_USERNAME và YOUR_REPO trong lệnh này).
 
-curl -sL [https://raw.githubusercontent.com/phungoc1912/wifiorangeli/main/install.sh](https://raw.githubusercontent.com/phungoc1912/wifiorangeli/main/install.sh) | sudo bash
+curl -sL [https://raw.githubusercontent.com/phungoc1912/wifiorangel/main/install.sh](https://raw.githubusercontent.com/phungoc1912/wifiorangel/main/install.sh) | sudo bash
 
 Kịch bản sẽ tự động thực hiện các công việc sau:
 
-Cài đặt Docker và Docker Compose nếu cần.
+Cài đặt Docker, Docker Compose và Avahi mDNS nếu cần.
 
 Tải mã nguồn từ repository GitHub của bạn.
 
@@ -64,7 +66,13 @@ Build Docker image.
 Khởi chạy ứng dụng.
 
 💻 Cách sử dụng
-Sau khi cài đặt thành công, bạn có thể truy cập giao diện web quản lý bằng cách mở trình duyệt trên điện thoại hoặc máy tính trong cùng mạng và truy cập vào địa chỉ IP của Orange Pi.
+Sau khi cài đặt thành công, bạn có thể truy cập giao diện web quản lý bằng cách mở trình duyệt trên điện thoại hoặc máy tính trong cùng mạng.
+
+Cách ưu tiên: Truy cập vào địa chỉ .local của thiết bị. Tên máy chủ được kịch bản cài đặt sử dụng là tên hostname của máy bạn.
+
+Ví dụ, nếu hostname là orangepi, hãy truy cập: http://orangepi.local
+
+Cách khác: Truy cập vào địa chỉ IP của Orange Pi.
 
 Ví dụ: http://192.168.1.10
 
@@ -92,5 +100,4 @@ Cập nhật phiên bản mới (sau khi bạn đã push code mới lên GitHub)
 git pull && docker-compose up -d --build
 
 📝 License
-
-Dự án này được cấp phép dưới giấy phép MIT. Xem file LICENSE để biết thêm chi tiết.
+Dự án này được cấp phép dưới giấy phép MIT.
