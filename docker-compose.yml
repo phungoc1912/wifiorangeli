@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  wifi-manager:
+    # Tự build image từ Dockerfile trong thư mục hiện tại
+    build: .
+    container_name: orangepi-wifi-manager
+    # Luôn tự khởi động lại container nếu nó bị dừng hoặc khi reboot
+    restart: always
+    # Chế độ network_mode: host là CỰC KỲ QUAN TRỌNG.
+    # Nó cho phép container truy cập và điều khiển trực tiếp các card mạng của máy chủ (Orange Pi).
+    network_mode: host
+    # Cấp quyền đặc biệt để container có thể thực hiện các thay đổi ở tầng hệ thống mạng.
+    privileged: true
+    # Chia sẻ DBus socket của máy chủ vào container.
+    # nmcli cần điều này để giao tiếp với dịch vụ NetworkManager chạy trên máy chủ.
+    volumes:
+      - /var/run/dbus:/var/run/dbus
+
