@@ -5,8 +5,8 @@ set -e
 
 # --- CẤU HÌNH ---
 # !!! THAY THẾ BẰNG THÔNG TIN GITHUB CỦA BẠN !!!
-GIT_USERNAME="YOUR_USERNAME"
-GIT_REPO="YOUR_REPO"
+GIT_USERNAME="phungoc1912"
+GIT_REPO="wifiorangeli"
 # --- KẾT THÚC CẤU HÌNH ---
 
 INSTALL_DIR="/opt/orangepi-wifi-manager"
@@ -70,4 +70,5 @@ echo "Ứng dụng Trình quản lý WiFi đã được triển khai bằng Dock
 echo "Bạn có thể truy cập qua địa chỉ IP của thiết bị hoặc qua http://$(hostname).local"
 echo "Để xem logs, dùng lệnh: cd $INSTALL_DIR && docker-compose logs -f"
 echo "Để dừng ứng dụng, dùng lệnh: cd $INSTALL_DIR && docker-compose down"
+
 
