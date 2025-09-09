@@ -23,7 +23,7 @@ SETUP_TEMPLATE = """
         select, input[type="password"], input[type="text"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         .btn { display: block; width: 100%; padding: 1rem; border: none; border-radius: 4px; background-color: #5a67d8; color: white; font-size: 1rem; cursor: pointer; text-align: center; text-decoration: none; }
         .btn:hover { background-color: #434190; }
-        .status { margin-top: 1rem; padding: 1rem; border-radius: 4px; text-align: center; }
+        .status { margin-top: 1rem; padding: 1rem; border-radius: 4px; text-align: center; word-wrap: break-word; }
         .status.success { background-color: #e6fffa; border: 1px solid #38c172; color: #1f9d55; }
         .status.error { background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; }
         .hidden { display: none; }
@@ -34,7 +34,7 @@ SETUP_TEMPLATE = """
         <h1>📶 Cài đặt WiFi</h1>
         <div class="status success">
             <strong>Trạng thái:</strong> {{ current_ssid or 'Chưa kết nối' }}<br>
-            <strong>IP:</strong> {{ current_ip or 'N/A' }}
+            <strong>Các địa chỉ IP:</strong> {{ current_ips or 'N/A' }}
         </div>
         <hr style="margin: 1.5rem 0; border: 1px solid #eee;">
         <form action="/connect" method="post">
@@ -117,20 +117,21 @@ def get_wifi_networks():
     return sorted(list(networks))
 
 def get_current_connection():
-    """Lấy SSID và địa chỉ IP hiện tại."""
+    """Lấy SSID và tất cả địa chỉ IP hiện tại."""
     ssid = run_command("iwgetid -r")
-    ip_address = run_command("hostname -I | awk '{print $1}'")
-    return ssid, ip_address
+    # hostname -I sẽ trả về một chuỗi chứa tất cả các địa chỉ IP, cách nhau bởi dấu cách.
+    ip_addresses = run_command("hostname -I")
+    return ssid, ip_addresses
 
 @app.route("/")
 def index():
     networks = get_wifi_networks()
-    current_ssid, current_ip = get_current_connection()
+    current_ssid, current_ips = get_current_connection()
     return render_template_string(
         SETUP_TEMPLATE,
         networks=networks,
         current_ssid=current_ssid,
-        current_ip=current_ip
+        current_ips=current_ips
     )
 
 @app.route("/connect", methods=["POST"])
